@@ -60,7 +60,7 @@ class Config:
                 dev_re = re.match('^device\s+/dev/(?P<device>.*)$', row)
                 param_re = re.match('^(?P<param>[a-zA-Z\s\d_]+)\s*=\s*(?P<value>\d+)$', row)
                 if host_re:
-                    host = '%s:%s' % (host_re['host'], host_re['port'] or 22) 
+                    host = ('%s:%s' % (host_re['host']).lower(), host_re['port'] or 22) 
                     self.dataset[host] = {'devices': []}
                 if dev_re:
                     assert host, 'Host should be pointed before defining drives'
@@ -165,10 +165,11 @@ class NvmeMan:
         if self.config.args.list:
             self.print_monitored_drives()
         if self.config.args.add:
-            devices = self.list_nvme_for_host(self.config.args.add)
+            host = self.config.args.add.lower()
+            devices = self.list_nvme_for_host(host)
             if devices:
                 self.add_to_config(host, devices)
-            exit(1)
+            exit(0)
         result = self.check() or []
         content = "\n".join(result) + "\n"
         if self.config.args.command == 'alert':
@@ -198,8 +199,8 @@ def main():
 
     config = Config(args)
     NvmeMan(config).run()
-    if not os.path.isfile(ALERT_PROGRAM):
-        sys.exit("bad config, alert program '%s' not exists" % ALERT_PROGRAM)
+    if ALERT_PROGRAM and not os.path.isfile(ALERT_PROGRAM):
+        sys.exit("Error: bad config, alert program '%s' not exists" % ALERT_PROGRAM)
 
 
 if __name__ == "__main__":
