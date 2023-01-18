@@ -33,22 +33,22 @@ Configuration
     percentage_used__grater=80
     temperature__grater=60
 
-    [host1.exmaple.com]
-    device /dev/nvme0n1
-    device /dev/nvme1n1
+    [host1.exmaple.com]         # host in Germany
+    device /dev/nvme0n1         # INTEL
+    device /dev/nvme1n1         # INTEL
     percentage_used__grater=90
 
-    [host2.exmaple.com:4444]
-    device /dev/nvme0n1
-    device /dev/nvme1n1
-    device /dev/nvme2n1
+    [host2.exmaple.com:4444]    # host in Ireland
+    device /dev/nvme0n1         # SAMSUNG 
+    device /dev/nvme1n1         # TOSHIBA
+    device /dev/nvme2n1         # SAMSUNG
 
 Configuration file allow comments, from symbol ``#`` to end of line.
 
 Syntax of ``nvmemonitor.conf`` file:
 
 list of monitored paramethers with suffixes ``__less`` or ``__grater`` , which are the same for all listed hosts.
-<param>__<less|grater>=<value>      ex: available_spare__less=10 - will inform you if the smart value would be less 90
+<param>__<less|grater>=<value>      ex: available_spare__less=10 - will inform you if the smart value would be less 10
 
 ``<host>[:port]`` ex:	[server2.example.com:4444]
 device /dev/<nvme>  ex: device /dev/nvme0n1
