@@ -115,8 +115,7 @@ Secure Shell
 To work properly you need to configure promptless ssh connection to necessary hosts.
 It can be done via ``ssh-keygen -t rsa`` and copy public key from ``/root/.ssh/id_rsa.pub``
 to ``/root/.ssh/authorized_keys`` on monitored servers. 
-Also you need to check connection with monitored server with command ``ssh 
-mple.com`` and answer ``yes`` to ssh question:
+Also you need to check connection with monitored server with command ``ssh example.com`` and answer ``yes`` to ssh question:
 
 or you can use the following commands
 .. code-block:: none
