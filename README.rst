@@ -2,14 +2,14 @@
 nvmemonitor
 =======
 
-Tool for monitoring host's nvme devices smart-attributes
+Tool for monitoring hosts nvme devices smart-attributes.
 
 This tool reads smart attributes which provided by nvme-cli tools from list of hosts and compare values with specified parameters in config.
 
 Installation
 ------------
 
-ensure the nvme-cli is installed on the hosts you need to monitor
+Ensure the nvme-cli tool is installed on the hosts you need to monitor.
 
 - ``cd /opt``
 - ``git clone https://github.com/igor-kremin/automon.git nvmemonitor``
@@ -25,19 +25,18 @@ Upgrade
 Configuration
 -------------
 
-- ``vim /opt/nvmemonitor/nvmemonitor.conf``
-- config example:
+- create config ``/opt/nvmemonitor/nvmemonitor.conf``, add hosts as many as you wish.
 
 .. code-block:: none
 
     available_spare__less=10
-    percentage_used__more=80
-    temperature__more=60
+    percentage_used__grater=80
+    temperature__grater=60
 
     [host1.exmaple.com]
     device /dev/nvme0n1
     device /dev/nvme1n1
-    percentage_used__more=90
+    percentage_used__grater=90
 
     [host2.exmaple.com:4444]
     device /dev/nvme0n1
@@ -46,15 +45,15 @@ Configuration
 
 Configuration file allow comments, from symbol ``#`` to end of line.
 
-Syntax of nvmemonitor.conf file:
+Syntax of ``nvmemonitor.conf`` file:
 
-list of monitored paramethers which are the same for all listed hosts.
+list of monitored paramethers with suffixes ``__less`` or ``__grater`` , which are the same for all listed hosts.
 <param>__<less|more>=<value>      ex: available_spare__less=10 - will inform you if the smart value would be less 90
 
 ``<host>[:port]`` ex:	[server2.example.com:4444]
 device /dev/<nvme>  ex: device /dev/nvme0n1
 list of monitored paramethers for the host previously defined.
-<param>__<less|more>=<value>      ex: percentage_used__more=90 - will inform you if the smart value would be grater 90 only on the server2.exmaple.com
+<param>__<less|more>=<value>      ex: percentage_used__grater=90 - will inform you if the smart value would be grater 90 only on the server2.exmaple.com
 
 sample output and list of available attributes from nvme-cli software 
 
