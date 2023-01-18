@@ -101,7 +101,7 @@ Command line arguments
     nvmemonitor alert - to send smart test results to alert program.
     nvmemonitor --add <host>[:port] [<host>[:port]] adds host(s) and its devices to config nvmemonitor.conf.
     nvmemonitor --show <host>[:port] [<host>[:port]] shows devices on hosts.
-    nvmemonitor --list <host>[:port] list all monitored devices.
+    nvmemonitor --list list all monitored devices.
     nvmemonitor --progress shows progress information when passing.
 
 Before first run
