@@ -98,7 +98,8 @@ Command line arguments
 
 .. code-block:: none
 
-    nvmemonitor alert                                       to send smart test results to alert program.
+    nvmemonitor test                                        shows smart test results if any warning occured.
+    nvmemonitor alert                                       sends smart test results to alert program if any warning occured.
     nvmemonitor --add <host>[:port] [<host>[:port]]         adds host(s) and its devices to config nvmemonitor.conf.``
     nvmemonitor --show <host>[:port] [<host>[:port]]        shows devices on hosts.
     nvmemonitor --list                                      list all monitored devices.
