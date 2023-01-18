@@ -1,0 +1,206 @@
+#!/usr/bin/python3 -u
+
+import argparse
+import datetime
+import os.path
+import subprocess
+import tempfile
+import sys
+import re
+
+__author__ = "Igor Kremin'"
+__license__ = "GNU General Public License version 3"
+__version__ = "0.0.1"
+
+SSH_BINARY_FILENAME = '/usr/bin/ssh'
+NVME_BINARY_FILENAME = '/usr/sbin/nvme'
+NVMEMONITOR_CONFIG_FILENAME = '/opt/nvmemonitor/nvmemonitor.conf'
+ALERT_PROGRAM = "/opt/alert-via-telegram"
+
+
+class Process:
+    def __init__(self, *args):
+        self.args = args
+        process = subprocess.Popen(args, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, cwd='/')
+        self.stdout_bytes, self.stderr_bytes = process.communicate()
+        self.stdout = self.stdout_bytes.decode(encoding="utf-8", errors="replace").strip()
+        self.stderr = self.stderr_bytes.decode(encoding="utf-8", errors="replace").strip()
+        self.returncode = process.returncode
+
+    def failed(self):
+        return self.returncode != 0
+
+    def print_info(self, message):
+        print(message + ": Process(", self.args, ") failed")
+        print("returncode:", self.returncode)
+        print("stdout:", self.stdout)
+        print("stderr:", self.stderr)
+
+
+class Config:
+
+    def __init__(self, args):
+        self.args = args
+        self.command = args.command
+        if not os.path.isfile(NVMEMONITOR_CONFIG_FILENAME):
+            sys.exit(f"configuration file '{NVMEMONITOR_CONFIG_FILENAME}' not found")
+        with open(NVMEMONITOR_CONFIG_FILENAME) as configuration_file:
+            lines = configuration_file.read().strip().split('\n')
+        self.dataset = {}
+        host = host_config = None
+        for index, row in enumerate(lines):
+            comment_start = row.find('#')
+            if comment_start > -1:
+                row = row[:comment_start]
+            row = row.replace("\t", "\x20").strip()
+            if not row:
+                continue
+            try:
+                host_re = re.match('^\[(?P<host>[a-z.\d]+)(:(?P<port>[\d]+))?\]$', row)
+                dev_re = re.match('^device\s+/dev/(?P<device>.*)$', row)
+                param_re = re.match('^(?P<param>[a-zA-Z\s\d_]+)\s*=\s*(?P<value>\d+)$', row)
+                if host_re:
+                    host = '%s:%s' % (host_re['host'], host_re['port'] or 22) 
+                    self.dataset[host] = {'devices': []}
+                if dev_re:
+                    assert host, 'Host should be pointed before defining drives'
+                    self.dataset[host]['devices'].append(dev_re['device'])
+                if param_re:
+                    if host:
+                        self.dataset[host][param_re['param']] = int(param_re['value'])
+                    else:
+                        self.dataset[param_re['param']] = int(param_re['value'])
+            except ValueError:
+                sys.exit(f"bad config: bad line: {index}: {row}")
+
+    @property
+    def hosts(self):
+        return [k for k, v in self.dataset.items() if isinstance(v, dict)]
+
+
+    def get_value(self, param, host=None):
+        assert self.dataset
+        less_value = self.dataset.get('%s__less' % param)
+        more_value = self.dataset.get('%s__more' % param)
+        if host and host in self.hosts:
+             less_value = self.dataset[host].get('%s__less' % param) or less_value
+             more_value = self.dataset[host].get('%s__more' % param) or more_value
+        return less_value, more_value
+
+
+class NvmeMan:
+
+    def __init__(self, config):
+        self.config = config
+
+    def list_nvme_for_host(self, host):
+        port = 22
+        if ':' in host:
+            host, port = host.split(':')
+        process = Process(SSH_BINARY_FILENAME, '-p', str(port), host, NVME_BINARY_FILENAME, "list | tail -n2 | awk '{ print $1 }'")
+        if process.failed():
+            print("can't list nvme drives for host '%s'" % host)
+            process.print_info("error")
+        return [nvme_device for nvme_device in process.stdout.strip().split('\n') if nvme_device.startswith('/dev/')]
+
+    def add_to_config(self, host, devices):
+        assert self.config and host and devices
+        config_devices = ['/dev/%s' % d for d in self.config.dataset[host]['devices']] if host in self.config.dataset else []
+        if host not in self.config.hosts:
+            data = '\n[%(host)s]\n%(devices)s\n' % {'host': host, 'devices': '\n'.join([('device %s' % d) for d in devices])}
+            with open(NVMEMONITOR_CONFIG_FILENAME, 'a') as configuration_file:
+                configuration_file.write(data)
+        elif set(config_devices) != set(devices):
+             print('host devices:\t%s' % ', '.join(devices))
+             print('conf devices:\t%s\nCorrect config if necessary' % (', '.join(config_devices)))
+        else:
+             print('Host: %s already in config' % host)
+
+    def check(self):
+        results = []
+        for host in self.config.hosts:
+            results.extend(self.check_host(host))
+        return results
+
+    def check_host(self, host):
+        assert self.config.dataset
+        hostname, port = host.split(':')
+        results = []
+        devices = self.config.dataset[host]['devices']
+        for device in devices:
+            process = Process(SSH_BINARY_FILENAME, '-p', str(port), hostname, NVME_BINARY_FILENAME, "smart-log /dev/%s" % device)
+            if process.failed():
+                if '/dev/%s: No such file or directory' % device in process.stderr:
+                    results.append('device %s disappered at host: %s' % (device, hostname))
+                else:
+                    print("can't fetch info for %s from host %s" % (device, hostname))
+                    process.print_info("fatal error")
+                    sys.exit(1)
+            lines = process.stdout.strip().split('\n')
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                param_re = re.match('^(.*)\s+:\s+(.*)$', line)
+                if param_re:
+                    param = param_re.group(1).strip()
+                    value = param_re.group(2).replace(',', '').replace('%', '').strip()
+                    if param.lower().startswith('temperature'):   # if value like '41 C (314 Kelvin)' take only  41
+                        value = re.match('^(\d+).*', value).group(1)
+                    value = int(value)
+                    less_value, more_value = self.config.get_value(param, host)
+                    if less_value and value < less_value:
+                        results.append('%s<%s\t%s\t%s\t/dev/%s' % (value, less_value, param, hostname, device))
+                    if more_value and value > more_value:
+                        results.append('%s>%s\t%s\t%s\t/dev/%s' % (value, more_value, param, hostname, device))
+        return results
+
+    def print_monitored_drives(self):
+        assert self.dataset
+        for host_drive, data in self.dataset.items():
+            print('%s\t:%s' % data['drive'], data['host'])
+
+
+    def run(self):
+        if self.config.args.list:
+            self.print_monitored_drives()
+        if self.config.args.add:
+            devices = self.list_nvme_for_host(self.config.args.add)
+            if devices:
+                self.add_to_config(host, devices)
+            exit(1)
+        result = self.check() or []
+        content = "\n".join(result) + "\n"
+        if self.config.args.command == 'alert':
+            if not os.path.isfile(ALERT_PROGRAM):
+                sys.exit("bad config, alert program '%s' not exists" % ALERT_PROGRAM)
+            with tempfile.NamedTemporaryFile(mode='wt') as alert:
+                alert.write(content)
+                alert.flush()
+                process = Process(ALERT_PROGRAM, alert.name)
+                if process.failed():
+                    process.print_info("error")
+        elif result:
+            print(content)
+
+def main():
+    parser = argparse.ArgumentParser(prog="nvmemonitor")
+    group = parser.add_mutually_exclusive_group()
+    parser.add_argument("-v", "--version", action='version', version=f"%(prog)s {__version__}", help="show program's version and exit")
+    group.add_argument("-l", "--list", action='store_true', help="list all monitored drives")
+    group.add_argument("-a", "--add", action='store', nargs='?', help="add host\'s devices to config")
+    group.add_argument("command", action='store', nargs='?', default=None, help="it must be one of config interval names")
+
+    args = parser.parse_args()
+    if not args.add and not args.list and args.command is None:
+        parser.print_help()
+        sys.exit(2)
+
+    config = Config(args)
+    NvmeMan(config).run()
+    if not os.path.isfile(ALERT_PROGRAM):
+        sys.exit("bad config, alert program '%s' not exists" % ALERT_PROGRAM)
+
+
+if __name__ == "__main__":
+    main()
