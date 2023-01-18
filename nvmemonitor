@@ -60,7 +60,7 @@ class Config:
                 dev_re = re.match('^device\s+/dev/(?P<device>.*)$', row)
                 param_re = re.match('^(?P<param>[a-zA-Z\s\d_]+)\s*=\s*(?P<value>\d+)$', row)
                 if host_re:
-                    host = ('%s:%s' % (host_re['host']).lower(), host_re['port'] or 22) 
+                    host = '%s:%s' % (host_re['host'].lower(), host_re['port'] or 22)
                     self.dataset[host] = {'devices': []}
                 if dev_re:
                     assert host, 'Host should be pointed before defining drives'
