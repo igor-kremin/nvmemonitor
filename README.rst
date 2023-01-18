@@ -48,12 +48,12 @@ Configuration file allow comments, from symbol ``#`` to end of line.
 Syntax of ``nvmemonitor.conf`` file:
 
 list of monitored paramethers with suffixes ``__less`` or ``__grater`` , which are the same for all listed hosts.
-<param>__<less|more>=<value>      ex: available_spare__less=10 - will inform you if the smart value would be less 90
+<param>__<less|grater>=<value>      ex: available_spare__less=10 - will inform you if the smart value would be less 90
 
 ``<host>[:port]`` ex:	[server2.example.com:4444]
 device /dev/<nvme>  ex: device /dev/nvme0n1
 list of monitored paramethers for the host previously defined.
-<param>__<less|more>=<value>      ex: percentage_used__grater=90 - will inform you if the smart value would be grater 90 only on the server2.exmaple.com
+<param>__<less|grater>=<value>      ex: percentage_used__grater=90 - will inform you if the smart value would be grater 90 only on the server2.exmaple.com
 
 sample output and list of available attributes from nvme-cli software 
 
