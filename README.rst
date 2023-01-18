@@ -47,10 +47,11 @@ Configuration
 Configuration file allow comments, from symbol ``#`` to end of line.
 
 Syntax of nvmemonitor.conf file:
+
 list of monitored paramethers which are the same for all listed hosts.
 <param>__<less|more>=<value>      ex: available_spare__less=10 - will inform you if the smart value would be less 90
 
-``<host>[:port]`` ex:	[server2.exmaple.com:4444]
+``<host>[:port]`` ex:	[server2.example.com:4444]
 device /dev/<nvme>  ex: device /dev/nvme0n1
 list of monitored paramethers for the host previously defined.
 <param>__<less|more>=<value>      ex: percentage_used__more=90 - will inform you if the smart value would be grater 90 only on the server2.exmaple.com
@@ -83,6 +84,7 @@ sample output and list of available attributes from nvme-cli software
     Thermal Management T1 Total Time        : 0
     Thermal Management T2 Total Time        : 0
 
+Each attribute values coverts to int for comparing.
 For ``temperature  attributes`` Celsius value is selected.
 
 ``alert`` command will use program ``/opt/bin/alert-via-telegram`` to send the test result to telegram
@@ -104,7 +106,7 @@ Command line arguments
 Before first run
 ----------------
 
-If you want to use alert to telegram you have to  to create Telegram bot and configure telegram-send script.
+If you want to use alert to telegram you have to to create Telegram bot and configure telegram-send script.
 Detalis see in https://pypi.python.org/pypi/telegram-send documentation.
 
 Secure Shell
@@ -113,7 +115,8 @@ Secure Shell
 To work properly you need to configure promptless ssh connection to necessary hosts.
 It can be done via ``ssh-keygen -t rsa`` and copy public key from ``/root/.ssh/id_rsa.pub``
 to ``/root/.ssh/authorized_keys`` on monitored servers. 
-Also you need to check connection with monitored server with command ``ssh example.com`` and answer ``yes`` to ssh question:
+Also you need to check connection with monitored server with command ``ssh 
+mple.com`` and answer ``yes`` to ssh question:
 
 or you can use the following commands
 .. code-block:: none
