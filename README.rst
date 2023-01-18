@@ -119,7 +119,9 @@ to ``/root/.ssh/authorized_keys`` on monitored servers.
 Also you need to check connection with monitored server with command ``ssh example.com`` and answer ``yes`` to ssh question:
 
 or you can use the following commands
+
 .. code-block:: none
+
     ssh-keygen -q -N "" 
     ssh-copy-id host1.example.com
 
