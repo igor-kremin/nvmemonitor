@@ -1,0 +1,21 @@
+available_spare__less=10
+percentage_used__grater=95
+temperature__grater=70
+
+
+[node01.example.com]
+device /dev/nvme0n1
+device /dev/nvme1n1
+percentage_used__grater=90
+
+[node02.example.com]
+device /dev/nvme0n1
+device /dev/nvme1n1
+
+[node03.example.com]
+device /dev/nvme0n1
+device /dev/nvme1n1
+
+[node04.example.com]
+device /dev/nvme1n1
+device /dev/nvme0n1

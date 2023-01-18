@@ -81,10 +81,10 @@ class Config:
     def get_value(self, param, host=None):
         assert self.dataset
         less_value = self.dataset.get('%s__less' % param)
-        more_value = self.dataset.get('%s__more' % param)
+        more_value = self.dataset.get('%s__grater' % param)
         if host and host in self.hosts:
              less_value = self.dataset[host].get('%s__less' % param) or less_value
-             more_value = self.dataset[host].get('%s__more' % param) or more_value
+             more_value = self.dataset[host].get('%s__grate' % param) or more_value
         return less_value, more_value
 
 
