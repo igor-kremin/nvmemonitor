@@ -10,7 +10,7 @@ import re
 
 __author__ = "Igor Kremin'"
 __license__ = "GNU General Public License version 3"
-__version__ = "0.0.1"
+__version__ = "1.0.0"
 
 SSH_BINARY_FILENAME = '/usr/bin/ssh'
 NVME_BINARY_FILENAME = '/usr/sbin/nvme'
@@ -75,8 +75,12 @@ class Config:
 
     @property
     def hosts(self):
+        assert self.dataset
         return [k for k, v in self.dataset.items() if isinstance(v, dict)]
 
+    def host_devices(self, host):
+        assert self.dataset
+        return self.dataset[host]['devices']
 
     def get_value(self, param, host=None):
         assert self.dataset
@@ -116,10 +120,15 @@ class NvmeMan:
         else:
              print('Host: %s already in config' % host)
 
-    def check(self):
+    def check(self, progress):
         results = []
         for host in self.config.hosts:
-            results.extend(self.check_host(host))
+            results = self.check_host(host)
+            if progress:
+                print('Process host: %s\t' % re.sub(':\d+$', '', host), end='')
+            results.extend(results)
+            if progress:
+                print('Warn' if results else 'Ok')
         return results
 
     def check_host(self, host):
@@ -155,22 +164,30 @@ class NvmeMan:
                         results.append('%s>%s\t%s\t%s\t/dev/%s' % (value, more_value, param, hostname, device))
         return results
 
-    def print_monitored_drives(self):
-        assert self.dataset
-        for host_drive, data in self.dataset.items():
-            print('%s\t:%s' % data['drive'], data['host'])
+    def print_monitored_devices(self):
+        assert self.config.dataset
+        for host in self.config.hosts:
+            print('%s:\t%s' % (host, ', '.join(self.config.host_devices(host))))
 
 
     def run(self):
         if self.config.args.list:
-            self.print_monitored_drives()
-        if self.config.args.add:
-            host = self.config.args.add.lower()
-            devices = self.list_nvme_for_host(host)
-            if devices:
-                self.add_to_config(host, devices)
+            self.print_monitored_devices()
             exit(0)
-        result = self.check() or []
+        if self.config.args.add:
+            for host in self.config.args.add:
+                host = host.lower()
+                devices = self.list_nvme_for_host(host)
+                if devices:
+                    self.add_to_config(host, devices)
+            exit(0)
+        if self.config.args.show:
+            for host in self.config.args.show:
+                host = host.lower()
+                devices = self.list_nvme_for_host(host)
+                print('%s:\t%s' % (host, ', '.join(devices)))
+
+        result = self.check(self.config.args.progress) or []
         content = "\n".join(result) + "\n"
         if self.config.args.command == 'alert':
             if not os.path.isfile(ALERT_PROGRAM):
@@ -189,11 +206,13 @@ def main():
     group = parser.add_mutually_exclusive_group()
     parser.add_argument("-v", "--version", action='version', version=f"%(prog)s {__version__}", help="show program's version and exit")
     group.add_argument("-l", "--list", action='store_true', help="list all monitored drives")
-    group.add_argument("-a", "--add", action='store', nargs='?', help="add host\'s devices to config")
-    group.add_argument("command", action='store', nargs='?', default=None, help="it must be one of config interval names")
+    group.add_argument("-a", "--add", action='store', type=str, nargs='+', help="add host\'s devices to config")
+    group.add_argument("-s", "--show", action='store', type=str, nargs='+', help="show host\'s devices")
+    group.add_argument("-p", "--progress", action='store_true', help="show progress info")
+    group.add_argument("command", action='store', nargs='?', default='test', help="it must be alert or test, default - test")
 
     args = parser.parse_args()
-    if not args.add and not args.list and args.command is None:
+    if not args.add and not args.show and not args.list and not args.progress and args.command is None:
         parser.print_help()
         sys.exit(2)
 
